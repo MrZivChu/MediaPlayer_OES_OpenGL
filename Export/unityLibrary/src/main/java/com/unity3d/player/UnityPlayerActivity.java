@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.SurfaceTexture;
+import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -64,8 +65,14 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         mUnityPlayer.requestFocus();
     }
 
+    // 第一种：用Camera去显示
+    private Camera mCamera;
+    private int cameraWidth;
+    private int cameraHeight;
     private void initSurface() {
-        Log.i(TAG,"initSurface");
+        mCamera = Camera.open(1);
+        cameraWidth = mCamera.getParameters().getPreviewSize().width;
+        cameraHeight = mCamera.getParameters().getPreviewSize().height;
         int textures[] = new int[1];
         GLES20.glGenTextures(1, textures, 0);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
@@ -73,9 +80,15 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
         mSurfaceTexture = new SurfaceTexture(textures[0]);
-        mSurfaceTexture.setDefaultBufferSize(640, 360);
-        mSurface = new Surface(mSurfaceTexture);
+        mSurfaceTexture.setDefaultBufferSize(cameraWidth, cameraHeight);
+        try {
+            mCamera.setPreviewTexture(mSurfaceTexture);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mCamera.startPreview();
         mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
@@ -84,8 +97,31 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                 UnityPlayer.UnitySendMessage("Canvas", "UpdateTexImage", "");
             }
         });
-        initMediaPlayer();
+
     }
+    // 第二种：用本地Media去显示
+//    private void initSurface() {
+//        Log.i(TAG,"initSurface");
+//        int textures[] = new int[1];
+//        GLES20.glGenTextures(1, textures, 0);
+//        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+//        mSurfaceTexture = new SurfaceTexture(textures[0]);
+//        mSurfaceTexture.setDefaultBufferSize(640, 360);
+//        mSurface = new Surface(mSurfaceTexture);
+//        mSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+//            @Override
+//            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+//                mIsFrameAvailable = true;
+//                Log.i(TAG,"onFrameAvailable");
+//                UnityPlayer.UnitySendMessage("Canvas", "UpdateTexImage", "");
+//            }
+//        });
+//        initMediaPlayer();
+//    }
 
     private void initMediaPlayer(){
         Log.i(TAG,"initMediaPlayer");
